@@ -1,6 +1,10 @@
-# template
+# GAI for Google Gemini
 
-[![CI](https://github.com/maragudk/template/actions/workflows/ci.yml/badge.svg)](https://github.com/maragudk/template/actions/workflows/ci.yml)
+<img src="logo.jpg" alt="Logo" width="300" align="right">
+
+[![CI](https://github.com/maragudk/gai-google/actions/workflows/ci.yml/badge.svg)](https://github.com/maragudk/gai-google/actions/workflows/ci.yml)
+
+[GAI](https://github.com/maragudk/gai) client for [Google Gemini](https://ai.google.dev/gemini-api/docs) models.
 
 Made with ✨sparkles✨ by [maragu](https://www.maragu.dev/).
 
