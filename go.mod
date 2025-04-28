@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/google/generative-ai-go v0.19.0
-	google.golang.org/api v0.229.0
+	google.golang.org/api v0.230.0
 	maragu.dev/gai v0.0.0-20250324125029-37f0922b9d9d
 	maragu.dev/is v0.3.0
 )
@@ -36,8 +36,8 @@ require (
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250218202821-56aae31c358a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250414145226-207652e42e2e // indirect
-	google.golang.org/grpc v1.71.1 // indirect
+	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
