@@ -5,7 +5,8 @@ go 1.24
 require (
 	github.com/google/generative-ai-go v0.19.0
 	google.golang.org/api v0.230.0
-	maragu.dev/gai v0.0.0-20250324125029-37f0922b9d9d
+	maragu.dev/env v0.2.0
+	maragu.dev/gai v0.0.0-20250429195214-51f5daffacbb
 	maragu.dev/is v0.3.0
 )
 
