@@ -37,6 +37,14 @@ func (c *Client) NewChatCompleter(opts NewChatCompleterOptions) *ChatCompleter {
 }
 
 func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRequest) (gai.ChatCompleteResponse, error) {
+	if len(req.Messages) == 0 {
+		panic("no messages")
+	}
+
+	if req.Messages[len(req.Messages)-1].Role != gai.MessageRoleUser {
+		panic("last message must have user role")
+	}
+
 	model := c.Client.GenerativeModel(string(c.model))
 
 	if req.Temperature != nil {
@@ -69,8 +77,6 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		session.History = append(session.History, &content)
 	}
 
-	// TODO check that the last history part is role user and handle
-
 	// Delete the last content from the history, because SendMessageStream expects it as varargs
 	lastContent := session.History[len(session.History)-1]
 	session.History = session.History[:len(session.History)-1]
@@ -84,10 +90,6 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 				if errors.Is(err, iterator.Done) {
 					break
 				}
-
-			}
-
-			if err != nil {
 				yield(gai.MessagePart{}, err)
 				return
 			}
