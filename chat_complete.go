@@ -51,6 +51,10 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		model.SetTemperature(float32(*req.Temperature))
 	}
 
+	if req.System != nil {
+		model.SystemInstruction = genai.NewUserContent(genai.Text(*req.System))
+	}
+
 	session := model.StartChat()
 
 	for _, m := range req.Messages {

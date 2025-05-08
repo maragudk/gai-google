@@ -206,8 +206,6 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 	})
 
 	t.Run("can use a system prompt", func(t *testing.T) {
-		t.Skip()
-
 		cc := newChatCompleter(t)
 
 		req := gai.ChatCompleteRequest{
@@ -234,7 +232,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, "Bonjour ! Comment allez-vous aujourd'hui ? Je suis ravi(e) de vous parler en français.", output)
+		is.Equal(t, "Bonjour ! Comment puis-je vous aider aujourd'hui ?\n", output)
 	})
 }
 
