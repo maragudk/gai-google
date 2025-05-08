@@ -59,7 +59,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		switch m.Role {
 		case gai.MessageRoleUser:
 			content.Role = "user"
-		case gai.MessageRoleAssistant:
+		case gai.MessageRoleModel:
 			content.Role = "model"
 		default:
 			panic("unknown role " + m.Role)
