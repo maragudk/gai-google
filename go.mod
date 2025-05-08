@@ -3,7 +3,7 @@ module maragu.dev/gai-google
 go 1.24
 
 require (
-	github.com/google/generative-ai-go v0.19.0
+	github.com/google/generative-ai-go v0.20.1
 	google.golang.org/api v0.231.0
 	maragu.dev/env v0.2.0
 	maragu.dev/gai v0.0.0-20250508081449-49f82b1140ca
