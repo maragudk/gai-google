@@ -15,7 +15,7 @@ Made with ✨sparkles✨ by [maragu](https://www.maragu.dev/): independent softw
 - [x] Chat-completion
   - [x] Streaming
   - [x] System prompt
-  - [ ] Tool use
+  - [x] Tool use
   - [ ] Structured output
   - [ ] Multi-modal input
   - [ ] Multi-modal output

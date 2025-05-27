@@ -2,10 +2,13 @@ package google
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	"google.golang.org/genai"
 	"maragu.dev/gai"
+	"maragu.dev/gai-google/internal/schema"
 )
 
 type ChatCompleteModel string
@@ -50,6 +53,19 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 	if req.System != nil {
 		config.SystemInstruction = genai.NewContentFromText(*req.System, genai.RoleUser)
 	}
+	
+	if len(req.Tools) > 0 {
+		tools, err := schema.ConvertTools(req.Tools)
+		if err != nil {
+			return gai.ChatCompleteResponse{}, fmt.Errorf("converting tools: %w", err)
+		}
+		config.Tools = tools
+		config.ToolConfig = &genai.ToolConfig{
+			FunctionCallingConfig: &genai.FunctionCallingConfig{
+				Mode: genai.FunctionCallingConfigModeAuto,
+			},
+		}
+	}
 
 	var history []*genai.Content
 	for _, m := range req.Messages {
@@ -68,6 +84,30 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 			switch part.Type {
 			case gai.MessagePartTypeText:
 				content.Parts = append(content.Parts, &genai.Part{Text: part.Text()})
+			case gai.MessagePartTypeToolCall:
+				toolCall := part.ToolCall()
+				args := make(map[string]any)
+				if err := json.Unmarshal(toolCall.Args, &args); err != nil {
+					return gai.ChatCompleteResponse{}, fmt.Errorf("unmarshaling tool call args: %w", err)
+				}
+				content.Parts = append(content.Parts, &genai.Part{
+					FunctionCall: &genai.FunctionCall{
+						Name: toolCall.Name,
+						Args: args,
+					},
+				})
+			case gai.MessagePartTypeToolResult:
+				toolResult := part.ToolResult()
+				resp := map[string]any{"output": toolResult.Content}
+				if toolResult.Err != nil {
+					resp = map[string]any{"error": toolResult.Err.Error()}
+				}
+				content.Parts = append(content.Parts, &genai.Part{
+					FunctionResponse: &genai.FunctionResponse{
+						Name:     toolResult.ID,
+						Response: resp,
+					},
+				})
 			default:
 				panic("unknown part type " + part.Type)
 			}
@@ -96,6 +136,20 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 				for _, part := range chunk.Candidates[0].Content.Parts {
 					if part.Text != "" {
 						if !yield(gai.TextMessagePart(part.Text), nil) {
+							return
+						}
+					}
+					if part.FunctionCall != nil {
+						args, err := json.Marshal(part.FunctionCall.Args)
+						if err != nil {
+							yield(gai.MessagePart{}, fmt.Errorf("marshaling function args: %w", err))
+							return
+						}
+						id := part.FunctionCall.ID
+						if id == "" {
+							id = part.FunctionCall.Name
+						}
+						if !yield(gai.ToolCallPart(id, part.FunctionCall.Name, args), nil) {
 							return
 						}
 					}
