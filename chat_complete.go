@@ -63,11 +63,6 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 			return gai.ChatCompleteResponse{}, fmt.Errorf("error converting tools: %w", err)
 		}
 		config.Tools = tools
-		config.ToolConfig = &genai.ToolConfig{
-			FunctionCallingConfig: &genai.FunctionCallingConfig{
-				Mode: genai.FunctionCallingConfigModeAuto,
-			},
-		}
 	}
 
 	var history []*genai.Content
