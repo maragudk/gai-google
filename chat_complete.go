@@ -2,11 +2,9 @@ package google
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/iterator"
+	"google.golang.org/genai"
 	"maragu.dev/gai"
 )
 
@@ -45,26 +43,23 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		panic("last message must have user role")
 	}
 
-	model := c.Client.GenerativeModel(string(c.model))
-
+	var config genai.GenerateContentConfig
 	if req.Temperature != nil {
-		model.SetTemperature(float32(*req.Temperature))
+		config.Temperature = gai.Ptr(float32(*req.Temperature))
 	}
-
 	if req.System != nil {
-		model.SystemInstruction = genai.NewUserContent(genai.Text(*req.System))
+		config.SystemInstruction = genai.NewContentFromText(*req.System, genai.RoleUser)
 	}
 
-	session := model.StartChat()
-
+	var history []*genai.Content
 	for _, m := range req.Messages {
 		var content genai.Content
 
 		switch m.Role {
 		case gai.MessageRoleUser:
-			content.Role = "user"
+			content.Role = genai.RoleUser
 		case gai.MessageRoleModel:
-			content.Role = "model"
+			content.Role = genai.RoleModel
 		default:
 			panic("unknown role " + m.Role)
 		}
@@ -72,36 +67,35 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		for _, part := range m.Parts {
 			switch part.Type {
 			case gai.MessagePartTypeText:
-				content.Parts = append(content.Parts, genai.Text(part.Text()))
+				content.Parts = append(content.Parts, &genai.Part{Text: part.Text()})
 			default:
 				panic("unknown part type " + part.Type)
 			}
 		}
 
-		session.History = append(session.History, &content)
+		history = append(history, &content)
 	}
 
 	// Delete the last content from the history, because SendMessageStream expects it as varargs
-	lastContent := session.History[len(session.History)-1]
-	session.History = session.History[:len(session.History)-1]
+	lastContent := history[len(history)-1]
+	history = history[:len(history)-1]
 
-	iter := session.SendMessageStream(ctx, lastContent.Parts...)
+	chat, err := c.Client.Chats.Create(ctx, string(c.model), &config, history)
+	if err != nil {
+		return gai.ChatCompleteResponse{}, err
+	}
 
 	return gai.NewChatCompleteResponse(func(yield func(gai.MessagePart, error) bool) {
-		for {
-			res, err := iter.Next()
+		for chunk, err := range chat.SendStream(ctx, lastContent.Parts...) {
 			if err != nil {
-				if errors.Is(err, iterator.Done) {
-					break
-				}
 				yield(gai.MessagePart{}, err)
 				return
 			}
 
-			if len(res.Candidates) > 0 {
-				for _, part := range res.Candidates[0].Content.Parts {
-					if textPart, ok := part.(genai.Text); ok {
-						if !yield(gai.TextMessagePart(string(textPart)), nil) {
+			if len(chunk.Candidates) > 0 && chunk.Candidates[0].Content != nil {
+				for _, part := range chunk.Candidates[0].Content.Parts {
+					if part.Text != "" {
+						if !yield(gai.TextMessagePart(part.Text), nil) {
 							return
 						}
 					}
