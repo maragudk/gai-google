@@ -91,7 +91,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 				toolCall := part.ToolCall()
 				args := make(map[string]any)
 				if err := json.Unmarshal(toolCall.Args, &args); err != nil {
-					return gai.ChatCompleteResponse{}, fmt.Errorf("unmarshaling tool call args: %w", err)
+					return gai.ChatCompleteResponse{}, fmt.Errorf("error unmarshaling tool call args: %w", err)
 				}
 				content.Parts = append(content.Parts, &genai.Part{
 					FunctionCall: &genai.FunctionCall{
@@ -145,7 +145,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 					if part.FunctionCall != nil {
 						args, err := json.Marshal(part.FunctionCall.Args)
 						if err != nil {
-							yield(gai.MessagePart{}, fmt.Errorf("marshaling function args: %w", err))
+							yield(gai.MessagePart{}, fmt.Errorf("error marshaling function args: %w", err))
 							return
 						}
 						id := part.FunctionCall.ID
