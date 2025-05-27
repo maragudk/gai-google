@@ -4,8 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/option"
+	"google.golang.org/genai"
 )
 
 type Client struct {
@@ -23,7 +22,10 @@ func NewClient(opts NewClientOptions) *Client {
 		opts.Log = slog.New(slog.DiscardHandler)
 	}
 
-	client, err := genai.NewClient(context.Background(), option.WithAPIKey(opts.Key))
+	client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
+		APIKey:  opts.Key,
+		Backend: genai.BackendGeminiAPI,
+	})
 	if err != nil {
 		panic(err)
 	}
