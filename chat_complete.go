@@ -2,10 +2,16 @@ package google
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"google.golang.org/genai"
 	"maragu.dev/gai"
+
+	"maragu.dev/gai-google/internal/schema"
 )
 
 type ChatCompleteModel string
@@ -51,6 +57,14 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		config.SystemInstruction = genai.NewContentFromText(*req.System, genai.RoleUser)
 	}
 
+	if len(req.Tools) > 0 {
+		tools, err := schema.ConvertTools(req.Tools)
+		if err != nil {
+			return gai.ChatCompleteResponse{}, fmt.Errorf("error converting tools: %w", err)
+		}
+		config.Tools = tools
+	}
+
 	var history []*genai.Content
 	for _, m := range req.Messages {
 		var content genai.Content
@@ -68,6 +82,27 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 			switch part.Type {
 			case gai.MessagePartTypeText:
 				content.Parts = append(content.Parts, &genai.Part{Text: part.Text()})
+
+			case gai.MessagePartTypeToolCall:
+				toolCall := part.ToolCall()
+				args := make(map[string]any)
+				if err := json.Unmarshal(toolCall.Args, &args); err != nil {
+					return gai.ChatCompleteResponse{}, fmt.Errorf("error unmarshaling tool call args: %w", err)
+				}
+				part := genai.NewPartFromFunctionCall(toolCall.Name, args)
+				part.FunctionCall.ID = toolCall.ID
+				content.Parts = append(content.Parts, part)
+
+			case gai.MessagePartTypeToolResult:
+				toolResult := part.ToolResult()
+				res := map[string]any{"output": toolResult.Content}
+				if toolResult.Err != nil {
+					res = map[string]any{"error": toolResult.Err.Error()}
+				}
+				part := genai.NewPartFromFunctionResponse(toolResult.Name, res)
+				part.FunctionResponse.ID = toolResult.ID
+				content.Parts = append(content.Parts, part)
+
 			default:
 				panic("unknown part type " + part.Type)
 			}
@@ -99,6 +134,20 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 							return
 						}
 					}
+					if part.FunctionCall != nil {
+						args, err := json.Marshal(part.FunctionCall.Args)
+						if err != nil {
+							yield(gai.MessagePart{}, fmt.Errorf("error marshaling function args: %w", err))
+							return
+						}
+						id := part.FunctionCall.ID
+						if id == "" {
+							id = createRandomID()
+						}
+						if !yield(gai.ToolCallPart(id, part.FunctionCall.Name, args), nil) {
+							return
+						}
+					}
 				}
 			}
 		}
@@ -106,3 +155,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 }
 
 var _ gai.ChatCompleter = (*ChatCompleter)(nil)
+
+func createRandomID() string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(time.Now().Format(time.RFC3339Nano))))
+}

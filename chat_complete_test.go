@@ -62,8 +62,6 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 	})
 
 	t.Run("can use a tool", func(t *testing.T) {
-		t.Skip()
-
 		cc := newChatCompleter(t)
 
 		root, err := os.OpenRoot("testdata")
@@ -100,6 +98,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 						content, err := tool.Function(t.Context(), toolCall.Args)
 						result = gai.ToolResult{
 							ID:      toolCall.ID,
+							Name:    tool.Name,
 							Content: content,
 							Err:     err,
 						}
@@ -115,7 +114,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, "I'll read the contents of the readme.txt file for you.", output)
+		is.Equal(t, "", output)
 		is.True(t, found, "tool not found")
 		is.Equal(t, "Hi!\n", result.Content)
 		is.NotError(t, result.Err)
@@ -142,12 +141,10 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, `The readme.txt file simply contains the text "Hi!" - it's a very brief readme file.`, output)
+		is.Equal(t, "The readme.txt file contains the text \"Hi!\".\n", output)
 	})
 
 	t.Run("can use a tool with no args", func(t *testing.T) {
-		t.Skip()
-
 		cc := newChatCompleter(t)
 
 		root, err := os.OpenRoot("testdata")
@@ -184,6 +181,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 						content, err := tool.Function(t.Context(), toolCall.Args)
 						result = gai.ToolResult{
 							ID:      toolCall.ID,
+							Name:    toolCall.Name,
 							Content: content,
 							Err:     err,
 						}
@@ -199,7 +197,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, "I'll help you list the contents of the current directory. I'll use the `list_dir` function to show you what files and directories are present.", output)
+		is.Equal(t, "", output)
 		is.True(t, found, "tool not found")
 		is.Equal(t, `["readme.txt"]`, result.Content)
 		is.NotError(t, result.Err)
