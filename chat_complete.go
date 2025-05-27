@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/genai"
 	"maragu.dev/gai"
+
 	"maragu.dev/gai-google/internal/schema"
 )
 
