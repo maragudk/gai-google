@@ -2,9 +2,11 @@ package google
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"google.golang.org/genai"
 	"maragu.dev/gai"
@@ -148,7 +150,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 						}
 						id := part.FunctionCall.ID
 						if id == "" {
-							id = part.FunctionCall.Name
+							id = createRandomID()
 						}
 						if !yield(gai.ToolCallPart(id, part.FunctionCall.Name, args), nil) {
 							return
@@ -161,3 +163,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 }
 
 var _ gai.ChatCompleter = (*ChatCompleter)(nil)
+
+func createRandomID() string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(time.Now().Format(time.RFC3339Nano))))
+}
