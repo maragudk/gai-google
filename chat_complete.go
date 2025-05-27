@@ -60,7 +60,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 	if len(req.Tools) > 0 {
 		tools, err := schema.ConvertTools(req.Tools)
 		if err != nil {
-			return gai.ChatCompleteResponse{}, fmt.Errorf("converting tools: %w", err)
+			return gai.ChatCompleteResponse{}, fmt.Errorf("error converting tools: %w", err)
 		}
 		config.Tools = tools
 		config.ToolConfig = &genai.ToolConfig{
