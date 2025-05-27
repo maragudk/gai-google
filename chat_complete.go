@@ -53,7 +53,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 	if req.System != nil {
 		config.SystemInstruction = genai.NewContentFromText(*req.System, genai.RoleUser)
 	}
-	
+
 	if len(req.Tools) > 0 {
 		tools, err := schema.ConvertTools(req.Tools)
 		if err != nil {

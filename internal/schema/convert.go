@@ -68,7 +68,7 @@ func ConvertToolSchema(schema gai.ToolSchema) (*genai.Schema, error) {
 			}
 			genaiProps[name] = propSchema
 		}
-		
+
 		if reqList, ok := props["required"].([]any); ok {
 			for _, req := range reqList {
 				if reqStr, ok := req.(string); ok {
