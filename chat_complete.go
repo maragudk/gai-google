@@ -82,30 +82,27 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 			switch part.Type {
 			case gai.MessagePartTypeText:
 				content.Parts = append(content.Parts, &genai.Part{Text: part.Text()})
+
 			case gai.MessagePartTypeToolCall:
 				toolCall := part.ToolCall()
 				args := make(map[string]any)
 				if err := json.Unmarshal(toolCall.Args, &args); err != nil {
 					return gai.ChatCompleteResponse{}, fmt.Errorf("error unmarshaling tool call args: %w", err)
 				}
-				content.Parts = append(content.Parts, &genai.Part{
-					FunctionCall: &genai.FunctionCall{
-						Name: toolCall.Name,
-						Args: args,
-					},
-				})
+				part := genai.NewPartFromFunctionCall(toolCall.Name, args)
+				part.FunctionCall.ID = toolCall.ID
+				content.Parts = append(content.Parts, part)
+
 			case gai.MessagePartTypeToolResult:
 				toolResult := part.ToolResult()
-				resp := map[string]any{"output": toolResult.Content}
+				res := map[string]any{"output": toolResult.Content}
 				if toolResult.Err != nil {
-					resp = map[string]any{"error": toolResult.Err.Error()}
+					res = map[string]any{"error": toolResult.Err.Error()}
 				}
-				content.Parts = append(content.Parts, &genai.Part{
-					FunctionResponse: &genai.FunctionResponse{
-						Name:     toolResult.ID,
-						Response: resp,
-					},
-				})
+				part := genai.NewPartFromFunctionResponse(toolResult.Name, res)
+				part.FunctionResponse.ID = toolResult.ID
+				content.Parts = append(content.Parts, part)
+
 			default:
 				panic("unknown part type " + part.Type)
 			}
