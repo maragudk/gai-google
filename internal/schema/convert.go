@@ -194,15 +194,9 @@ func ConvertResponseSchema(schema gai.Schema) (*genai.Schema, error) {
 	result.Example = schema.Example
 	result.Format = schema.Format
 	result.MaxItems = schema.MaxItems
-	result.MaxLength = schema.MaxLength
-	result.MaxProperties = schema.MaxProperties
 	result.Maximum = schema.Maximum
 	result.MinItems = schema.MinItems
-	result.MinLength = schema.MinLength
-	result.MinProperties = schema.MinProperties
 	result.Minimum = schema.Minimum
-	result.Nullable = schema.Nullable
-	result.Pattern = schema.Pattern
 	result.PropertyOrdering = schema.PropertyOrdering
 	result.Title = schema.Title
 
