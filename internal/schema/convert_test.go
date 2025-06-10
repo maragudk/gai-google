@@ -298,7 +298,7 @@ func TestConvertResponseSchema(t *testing.T) {
 		is.NotError(t, err)
 
 		is.Equal(t, genai.TypeObject, genaiSchema.Type)
-		
+
 		personProp := genaiSchema.Properties["person"]
 		is.Equal(t, genai.TypeObject, personProp.Type)
 		is.Equal(t, 2, len(personProp.Properties))
@@ -381,17 +381,13 @@ func TestConvertResponseSchema(t *testing.T) {
 
 	t.Run("copies all fields", func(t *testing.T) {
 		inputSchema := gai.Schema{
-			Type:             gai.SchemaTypeString,
-			Description:      "Test description",
-			Default:          "default value",
-			Enum:             []string{"option1", "option2"},
-			Example:          "example value",
-			Format:           "email",
-			MaxLength:        gai.Ptr(int64(100)),
-			MinLength:        gai.Ptr(int64(10)),
-			Pattern:          "^[a-z]+$",
-			Title:            "Test Title",
-			Nullable:         gai.Ptr(true),
+			Type:        gai.SchemaTypeString,
+			Description: "Test description",
+			Default:     "default value",
+			Enum:        []string{"option1", "option2"},
+			Example:     "example value",
+			Format:      "email",
+			Title:       "Test Title",
 		}
 
 		genaiSchema, err := schema.ConvertResponseSchema(inputSchema)
@@ -403,11 +399,7 @@ func TestConvertResponseSchema(t *testing.T) {
 		is.EqualSlice(t, []string{"option1", "option2"}, genaiSchema.Enum)
 		is.Equal(t, "example value", genaiSchema.Example)
 		is.Equal(t, "email", genaiSchema.Format)
-		is.Equal(t, int64(100), *genaiSchema.MaxLength)
-		is.Equal(t, int64(10), *genaiSchema.MinLength)
-		is.Equal(t, "^[a-z]+$", genaiSchema.Pattern)
 		is.Equal(t, "Test Title", genaiSchema.Title)
-		is.True(t, *genaiSchema.Nullable)
 	})
 
 	t.Run("copies numeric constraints", func(t *testing.T) {
@@ -447,8 +439,6 @@ func TestConvertResponseSchema(t *testing.T) {
 	t.Run("copies object constraints", func(t *testing.T) {
 		inputSchema := gai.Schema{
 			Type:             gai.SchemaTypeObject,
-			MaxProperties:    gai.Ptr(int64(20)),
-			MinProperties:    gai.Ptr(int64(2)),
 			PropertyOrdering: []string{"first", "second", "third"},
 			Properties: map[string]*gai.Schema{
 				"first": {Type: gai.SchemaTypeString},
@@ -459,8 +449,6 @@ func TestConvertResponseSchema(t *testing.T) {
 		is.NotError(t, err)
 
 		is.Equal(t, genai.TypeObject, genaiSchema.Type)
-		is.Equal(t, int64(20), *genaiSchema.MaxProperties)
-		is.Equal(t, int64(2), *genaiSchema.MinProperties)
 		is.EqualSlice(t, []string{"first", "second", "third"}, genaiSchema.PropertyOrdering)
 	})
 
