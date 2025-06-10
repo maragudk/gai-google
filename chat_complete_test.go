@@ -1,8 +1,11 @@
 package google_test
 
 import (
+	"bytes"
+	_ "embed"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"maragu.dev/gai"
@@ -11,6 +14,15 @@ import (
 
 	google "maragu.dev/gai-google"
 )
+
+//go:embed testdata/logo.jpg
+var image []byte
+
+//go:embed testdata/hello-there.m4a
+var audio []byte
+
+//go:embed testdata/thumbs-up.mov
+var video []byte
 
 func TestChatCompleter_ChatComplete(t *testing.T) {
 	t.Run("can chat-complete", func(t *testing.T) {
@@ -200,7 +212,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 
 		is.Equal(t, "", output)
 		is.True(t, found, "tool not found")
-		is.Equal(t, `["readme.txt"]`, result.Content)
+		is.Equal(t, `["hello-there.m4a","logo.jpg","readme.txt","thumbs-up.mov"]`, result.Content)
 		is.NotError(t, result.Err)
 	})
 
@@ -276,6 +288,98 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 		is.Equal(t, "Dune", book.Title)
 		is.Equal(t, "Frank Herbert", book.Author)
 		is.Equal(t, 1965, book.Year)
+	})
+
+	t.Run("can describe an image", func(t *testing.T) {
+		cc := newChatCompleter(t)
+
+		req := gai.ChatCompleteRequest{
+			Messages: []gai.Message{
+				gai.NewUserDataMessage("image/jpeg", bytes.NewReader(image)),
+			},
+			System:      gai.Ptr("Describe this image concisely."),
+			Temperature: gai.Ptr(gai.Temperature(0)),
+		}
+
+		res, err := cc.ChatComplete(t.Context(), req)
+		is.NotError(t, err)
+
+		var output string
+		for part, err := range res.Parts() {
+			is.NotError(t, err)
+
+			switch part.Type {
+			case gai.MessagePartTypeText:
+				output += part.Text()
+
+			default:
+				t.Fatal("unexpected message parts")
+			}
+		}
+
+		is.Equal(t, "A cartoon-style illustration of a blue beaver with large eyes and buck teeth, set against a pink background. The beaver has its paws clasped together in front of it.", output)
+	})
+
+	t.Run("can describe audio", func(t *testing.T) {
+		cc := newChatCompleter(t)
+
+		req := gai.ChatCompleteRequest{
+			Messages: []gai.Message{
+				gai.NewUserDataMessage("audio/mp4", bytes.NewReader(audio)),
+			},
+			System:      gai.Ptr("Describe this audio concisely."),
+			Temperature: gai.Ptr(gai.Temperature(0)),
+		}
+
+		res, err := cc.ChatComplete(t.Context(), req)
+		is.NotError(t, err)
+
+		var output string
+		for part, err := range res.Parts() {
+			is.NotError(t, err)
+
+			switch part.Type {
+			case gai.MessagePartTypeText:
+				output += part.Text()
+
+			default:
+				t.Fatal("unexpected message parts")
+			}
+		}
+
+		t.Log(output)
+		is.True(t, strings.Contains(output, "Hello there"), "should contain greeting")
+	})
+
+	t.Run("can describe a video", func(t *testing.T) {
+		cc := newChatCompleter(t)
+
+		req := gai.ChatCompleteRequest{
+			Messages: []gai.Message{
+				gai.NewUserDataMessage("video/quicktime", bytes.NewReader(video)),
+			},
+			System:      gai.Ptr("Describe this video concisely."),
+			Temperature: gai.Ptr(gai.Temperature(0)),
+		}
+
+		res, err := cc.ChatComplete(t.Context(), req)
+		is.NotError(t, err)
+
+		var output string
+		for part, err := range res.Parts() {
+			is.NotError(t, err)
+
+			switch part.Type {
+			case gai.MessagePartTypeText:
+				output += part.Text()
+
+			default:
+				t.Fatal("unexpected message parts")
+			}
+		}
+
+		t.Log(output)
+		is.True(t, strings.Contains(output, "thumbs-up gesture"), "should contain thumbs-up gesture")
 	})
 }
 

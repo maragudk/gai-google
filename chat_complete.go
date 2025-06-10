@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -110,6 +111,20 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 				}
 				part := genai.NewPartFromFunctionResponse(toolResult.Name, res)
 				part.FunctionResponse.ID = toolResult.ID
+				content.Parts = append(content.Parts, part)
+
+			case gai.MessagePartTypeData:
+				data, err := io.ReadAll(part.Data)
+				if err != nil {
+					return gai.ChatCompleteResponse{}, fmt.Errorf("error reading data: %w", err)
+				}
+
+				part := &genai.Part{
+					InlineData: &genai.Blob{
+						MIMEType: part.MIMEType,
+						Data:     data,
+					},
+				}
 				content.Parts = append(content.Parts, part)
 
 			default:
