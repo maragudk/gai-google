@@ -1,6 +1,7 @@
 package google_test
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -95,7 +96,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 				for _, tool := range req.Tools {
 					if tool.Name == toolCall.Name {
 						found = true
-						content, err := tool.Function(t.Context(), toolCall.Args)
+						content, err := tool.Execute(t.Context(), toolCall.Args)
 						result = gai.ToolResult{
 							ID:      toolCall.ID,
 							Name:    tool.Name,
@@ -178,7 +179,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 				for _, tool := range req.Tools {
 					if tool.Name == toolCall.Name {
 						found = true
-						content, err := tool.Function(t.Context(), toolCall.Args)
+						content, err := tool.Execute(t.Context(), toolCall.Args)
 						result = gai.ToolResult{
 							ID:      toolCall.ID,
 							Name:    toolCall.Name,
@@ -231,6 +232,50 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 		}
 
 		is.Equal(t, "Bonjour ! Comment puis-je vous aider aujourd'hui ?\n", output)
+	})
+
+	t.Run("can use structured output", func(t *testing.T) {
+		cc := newChatCompleter(t)
+
+		type BookRecommendation struct {
+			Title  string `json:"title"`
+			Author string `json:"author"`
+			Year   int    `json:"year"`
+		}
+
+		req := gai.ChatCompleteRequest{
+			Messages: []gai.Message{
+				gai.NewUserTextMessage("Recommend a science fiction book. Include the title, author, and the year it was published."),
+			},
+			ResponseSchema: gai.Ptr(gai.GenerateSchema[BookRecommendation]()),
+			Temperature:    gai.Ptr(gai.Temperature(0)),
+		}
+
+		res, err := cc.ChatComplete(t.Context(), req)
+		is.NotError(t, err)
+
+		var output string
+		for part, err := range res.Parts() {
+			is.NotError(t, err)
+
+			switch part.Type {
+			case gai.MessagePartTypeText:
+				output += part.Text()
+
+			default:
+				t.Fatal("unexpected message parts")
+			}
+		}
+
+		// Verify it's valid JSON with the expected structure
+		var book BookRecommendation
+		err = json.Unmarshal([]byte(output), &book)
+		is.NotError(t, err)
+
+		// Check that all fields are populated
+		is.Equal(t, "Dune", book.Title)
+		is.Equal(t, "Frank Herbert", book.Author)
+		is.Equal(t, 1965, book.Year)
 	})
 }
 

@@ -65,6 +65,15 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		config.Tools = tools
 	}
 
+	if req.ResponseSchema != nil {
+		responseSchema, err := schema.ConvertResponseSchema(*req.ResponseSchema)
+		if err != nil {
+			return gai.ChatCompleteResponse{}, fmt.Errorf("error converting response schema: %w", err)
+		}
+		config.ResponseMIMEType = "application/json"
+		config.ResponseSchema = responseSchema
+	}
+
 	var history []*genai.Content
 	for _, m := range req.Messages {
 		var content genai.Content
