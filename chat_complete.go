@@ -144,11 +144,27 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		return gai.ChatCompleteResponse{}, err
 	}
 
-	return gai.NewChatCompleteResponse(func(yield func(gai.MessagePart, error) bool) {
+	meta := &gai.ChatCompleteResponseMetadata{}
+
+	res := gai.NewChatCompleteResponse(func(yield func(gai.MessagePart, error) bool) {
 		for chunk, err := range chat.SendStream(ctx, lastContent.Parts...) {
 			if err != nil {
 				yield(gai.MessagePart{}, err)
 				return
+			}
+
+			// Extract token usage from the response
+			// Google GenAI sends usage metadata with every chunk during streaming:
+			// - Early chunks show prompt tokens only (with minor variations between chunks)
+			// - The final chunk contains complete counts including completion tokens
+			// We update on each chunk, so the final values will be correct
+			if chunk.UsageMetadata != nil {
+				meta.Usage = gai.ChatCompleteResponseUsage{
+					PromptTokens:     int(chunk.UsageMetadata.PromptTokenCount),
+					ThoughtsTokens:   int(chunk.UsageMetadata.ThoughtsTokenCount),
+					CompletionTokens: int(chunk.UsageMetadata.CandidatesTokenCount),
+					TotalTokens:      int(chunk.UsageMetadata.TotalTokenCount),
+				}
 			}
 
 			if len(chunk.Candidates) > 0 && chunk.Candidates[0].Content != nil {
@@ -175,7 +191,11 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 				}
 			}
 		}
-	}), nil
+	})
+
+	res.Meta = meta
+
+	return res, nil
 }
 
 var _ gai.ChatCompleter = (*ChatCompleter)(nil)

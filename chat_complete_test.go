@@ -381,6 +381,45 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 		t.Log(output)
 		is.True(t, strings.Contains(output, "thumbs-up gesture"), "should contain thumbs-up gesture")
 	})
+
+	t.Run("tracks token usage", func(t *testing.T) {
+		cc := newChatCompleter(t)
+
+		req := gai.ChatCompleteRequest{
+			Messages: []gai.Message{
+				gai.NewUserTextMessage("Hi!"),
+			},
+			Temperature: gai.Ptr(gai.Temperature(0)),
+		}
+
+		res, err := cc.ChatComplete(t.Context(), req)
+		is.NotError(t, err)
+
+		// Consume the response to ensure token usage is populated
+		var output string
+		for part, err := range res.Parts() {
+			is.NotError(t, err)
+			if part.Type == gai.MessagePartTypeText {
+				output += part.Text()
+			}
+		}
+
+		// Check that we got a response
+		is.True(t, len(output) > 0, "should have response text")
+
+		// Check token usage in Meta.Usage
+		is.NotNil(t, res.Meta, "should have metadata")
+		is.True(t, res.Meta.Usage.PromptTokens > 0, "should have prompt tokens")
+		is.True(t, res.Meta.Usage.CompletionTokens > 0, "should have completion tokens")
+		is.True(t, res.Meta.Usage.TotalTokens > 0, "should have total tokens")
+		
+		// Verify total tokens calculation (should include prompt and completion tokens, but not thoughts)
+		expectedTotal := res.Meta.Usage.PromptTokens + res.Meta.Usage.CompletionTokens
+		is.Equal(t, expectedTotal, res.Meta.Usage.TotalTokens)
+		
+		// ThoughtsTokens may be 0 for simple requests
+		is.True(t, res.Meta.Usage.ThoughtsTokens >= 0, "thoughts tokens should be non-negative")
+	})
 }
 
 func newChatCompleter(t *testing.T) *google.ChatCompleter {
