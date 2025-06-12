@@ -5,7 +5,7 @@ go 1.24
 require (
 	google.golang.org/genai v1.10.0
 	maragu.dev/env v0.2.0
-	maragu.dev/gai v0.0.0-20250610183459-8b544b9cb41c
+	maragu.dev/gai v0.0.0-20250612132746-8bc8ef94c865
 	maragu.dev/is v0.3.1
 )
 
