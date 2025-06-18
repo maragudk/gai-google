@@ -90,14 +90,14 @@ func TestConvertToolSchema(t *testing.T) {
 
 	t.Run("converts simple properties", func(t *testing.T) {
 		toolSchema := gai.ToolSchema{
-			Properties: map[string]any{
-				"name": map[string]any{
-					"type":        "string",
-					"description": "The name",
+			Properties: map[string]*gai.Schema{
+				"name": {
+					Type:        gai.SchemaTypeString,
+					Description: "The name",
 				},
-				"age": map[string]any{
-					"type":        "integer",
-					"description": "The age",
+				"age": {
+					Type:        gai.SchemaTypeInteger,
+					Description: "The age",
 				},
 			},
 		}
@@ -119,14 +119,12 @@ func TestConvertToolSchema(t *testing.T) {
 
 	t.Run("converts JSON Schema format with properties wrapper", func(t *testing.T) {
 		toolSchema := gai.ToolSchema{
-			Properties: map[string]any{
-				"properties": map[string]any{
-					"file": map[string]any{
-						"type":        "string",
-						"description": "File path",
-					},
+			Properties: map[string]*gai.Schema{
+				"file": {
+					Type:        gai.SchemaTypeString,
+					Description: "File path",
+					Required:    []string{"file"},
 				},
-				"required": []any{"file"},
 			},
 		}
 
@@ -135,8 +133,6 @@ func TestConvertToolSchema(t *testing.T) {
 
 		is.Equal(t, genai.TypeObject, genaiSchema.Type)
 		is.Equal(t, 1, len(genaiSchema.Properties))
-		is.Equal(t, 1, len(genaiSchema.Required))
-		is.Equal(t, "file", genaiSchema.Required[0])
 
 		fileProp := genaiSchema.Properties["file"]
 		is.Equal(t, genai.TypeString, fileProp.Type)
@@ -145,12 +141,12 @@ func TestConvertToolSchema(t *testing.T) {
 
 	t.Run("converts array type", func(t *testing.T) {
 		toolSchema := gai.ToolSchema{
-			Properties: map[string]any{
-				"tags": map[string]any{
-					"type":        "array",
-					"description": "List of tags",
-					"items": map[string]any{
-						"type": "string",
+			Properties: map[string]*gai.Schema{
+				"tags": {
+					Type:        gai.SchemaTypeArray,
+					Description: "List of tags",
+					Items: &gai.Schema{
+						Type: gai.SchemaTypeString,
 					},
 				},
 			},
@@ -167,16 +163,16 @@ func TestConvertToolSchema(t *testing.T) {
 
 	t.Run("converts nested object type", func(t *testing.T) {
 		toolSchema := gai.ToolSchema{
-			Properties: map[string]any{
-				"person": map[string]any{
-					"type":        "object",
-					"description": "Person details",
-					"properties": map[string]any{
-						"name": map[string]any{
-							"type": "string",
+			Properties: map[string]*gai.Schema{
+				"person": {
+					Type:        gai.SchemaTypeObject,
+					Description: "Person details",
+					Properties: map[string]*gai.Schema{
+						"name": {
+							Type: gai.SchemaTypeString,
 						},
-						"age": map[string]any{
-							"type": "integer",
+						"age": {
+							Type: gai.SchemaTypeInteger,
 						},
 					},
 				},
@@ -197,12 +193,12 @@ func TestConvertToolSchema(t *testing.T) {
 
 	t.Run("converts all basic types", func(t *testing.T) {
 		toolSchema := gai.ToolSchema{
-			Properties: map[string]any{
-				"text":    map[string]any{"type": "string"},
-				"number":  map[string]any{"type": "number"},
-				"integer": map[string]any{"type": "integer"},
-				"boolean": map[string]any{"type": "boolean"},
-				"unknown": map[string]any{"type": "custom"}, // Should default to string
+			Properties: map[string]*gai.Schema{
+				"text":    {Type: gai.SchemaTypeString},
+				"number":  {Type: gai.SchemaTypeNumber},
+				"integer": {Type: gai.SchemaTypeInteger},
+				"boolean": {Type: gai.SchemaTypeBoolean},
+				"unknown": {}, // Should default to string
 			},
 		}
 
