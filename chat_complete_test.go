@@ -51,7 +51,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, "Hi there! How can I help you today?\n", output)
+		is.Equal(t, "Hi there! How can I help you today?", output)
 
 		req.Messages = append(req.Messages, gai.NewModelTextMessage("Hi there! How can I help you today?\n"))
 		req.Messages = append(req.Messages, gai.NewUserTextMessage("What does the acronym AI stand for? Be brief."))
@@ -71,7 +71,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 				t.Fatal("unexpected message parts")
 			}
 		}
-		is.Equal(t, "Artificial Intelligence\n", output)
+		is.Equal(t, "Artificial Intelligence.", output)
 	})
 
 	t.Run("can use a tool", func(t *testing.T) {
@@ -154,7 +154,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, "The file readme.txt contains the following text: \"Hi!\\n\"\n", output)
+		is.Equal(t, `The readme.txt file contains "Hi!".`, output)
 	})
 
 	t.Run("can use a tool with no args", func(t *testing.T) {
@@ -243,7 +243,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, "Bonjour ! Comment puis-je vous aider aujourd'hui ?\n", output)
+		is.Equal(t, "Bonjour !", output)
 	})
 
 	t.Run("can use structured output", func(t *testing.T) {
@@ -317,7 +317,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, "A cartoon-style illustration of a blue beaver with large eyes and buck teeth, set against a pink background. The beaver has its paws clasped together in front of it.", output)
+		is.Equal(t, "A cute, stylized teal or turquoise gopher-like creature with a grainy texture and thick black outlines. It features large, expressive eyes, prominent buck teeth, and its small paws clasped together, conveying a shy or contemplative expression. The image is set against a solid light pink background.", output)
 	})
 
 	t.Run("can describe audio", func(t *testing.T) {
@@ -411,21 +411,18 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 		is.NotNil(t, res.Meta, "should have metadata")
 		is.True(t, res.Meta.Usage.PromptTokens > 0, "should have prompt tokens")
 		is.True(t, res.Meta.Usage.CompletionTokens > 0, "should have completion tokens")
+		is.True(t, res.Meta.Usage.ThoughtsTokens > 0, "should have thoughts tokens")
 		is.True(t, res.Meta.Usage.TotalTokens > 0, "should have total tokens")
 
-		// Verify total tokens calculation (should include prompt and completion tokens, but not thoughts)
-		expectedTotal := res.Meta.Usage.PromptTokens + res.Meta.Usage.CompletionTokens
+		expectedTotal := res.Meta.Usage.PromptTokens + res.Meta.Usage.ThoughtsTokens + res.Meta.Usage.CompletionTokens
 		is.Equal(t, expectedTotal, res.Meta.Usage.TotalTokens)
-
-		// ThoughtsTokens may be 0 for simple requests
-		is.True(t, res.Meta.Usage.ThoughtsTokens >= 0, "thoughts tokens should be non-negative")
 	})
 }
 
 func newChatCompleter(t *testing.T) *google.ChatCompleter {
 	c := newClient(t)
 	cc := c.NewChatCompleter(google.NewChatCompleterOptions{
-		Model: google.ChatCompleteModelGemini2_0Flash,
+		Model: google.ChatCompleteModelGemini2_5Flash,
 	})
 	return cc
 }
