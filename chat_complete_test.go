@@ -154,7 +154,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 			}
 		}
 
-		is.Equal(t, "The readme.txt file contains the text \"Hi!\".\n", output)
+		is.Equal(t, "The file readme.txt contains the following text: \"Hi!\\n\"\n", output)
 	})
 
 	t.Run("can use a tool with no args", func(t *testing.T) {
@@ -412,11 +412,11 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 		is.True(t, res.Meta.Usage.PromptTokens > 0, "should have prompt tokens")
 		is.True(t, res.Meta.Usage.CompletionTokens > 0, "should have completion tokens")
 		is.True(t, res.Meta.Usage.TotalTokens > 0, "should have total tokens")
-		
+
 		// Verify total tokens calculation (should include prompt and completion tokens, but not thoughts)
 		expectedTotal := res.Meta.Usage.PromptTokens + res.Meta.Usage.CompletionTokens
 		is.Equal(t, expectedTotal, res.Meta.Usage.TotalTokens)
-		
+
 		// ThoughtsTokens may be 0 for simple requests
 		is.True(t, res.Meta.Usage.ThoughtsTokens >= 0, "thoughts tokens should be non-negative")
 	})
