@@ -164,7 +164,6 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 					PromptTokens:     int(chunk.UsageMetadata.PromptTokenCount),
 					ThoughtsTokens:   int(chunk.UsageMetadata.ThoughtsTokenCount),
 					CompletionTokens: int(chunk.UsageMetadata.CandidatesTokenCount),
-					TotalTokens:      int(chunk.UsageMetadata.TotalTokenCount),
 				}
 			}
 

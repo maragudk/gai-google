@@ -411,13 +411,10 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 
 		// Check token usage in Meta.Usage
 		is.NotNil(t, res.Meta, "should have metadata")
+		t.Log(res.Meta.Usage.PromptTokens, res.Meta.Usage.CompletionTokens, res.Meta.Usage.ThoughtsTokens)
 		is.True(t, res.Meta.Usage.PromptTokens > 0, "should have prompt tokens")
 		is.True(t, res.Meta.Usage.CompletionTokens > 0, "should have completion tokens")
 		is.True(t, res.Meta.Usage.ThoughtsTokens > 0, "should have thoughts tokens")
-		is.True(t, res.Meta.Usage.TotalTokens > 0, "should have total tokens")
-
-		expectedTotal := res.Meta.Usage.PromptTokens + res.Meta.Usage.ThoughtsTokens + res.Meta.Usage.CompletionTokens
-		is.Equal(t, expectedTotal, res.Meta.Usage.TotalTokens)
 	})
 }
 
