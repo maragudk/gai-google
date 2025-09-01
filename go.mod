@@ -3,7 +3,7 @@ module maragu.dev/gai-google
 go 1.24
 
 require (
-	google.golang.org/genai v1.21.0
+	google.golang.org/genai v1.22.0
 	maragu.dev/env v0.2.0
 	maragu.dev/gai v0.0.0-20250826105131-21f642fac70d
 	maragu.dev/is v0.3.1
