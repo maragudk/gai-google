@@ -214,8 +214,7 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 				)
 			}
 
-			if len(chunk.Candidates) == 0 || chunk.Candidates[0].Content == nil {
-				return
+				continue
 			}
 
 			for _, part := range chunk.Candidates[0].Content.Parts {
