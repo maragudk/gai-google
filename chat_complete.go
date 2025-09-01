@@ -20,8 +20,7 @@ type ChatCompleteModel string
 const (
 	ChatCompleteModelGemini2_0Flash = ChatCompleteModel("models/gemini-2.0-flash")
 	ChatCompleteModelGemini2_5Flash = ChatCompleteModel("models/gemini-2.5-flash")
-
-	ChatCompleteModelGemini2_5Pro = ChatCompleteModel("models/gemini-2.5-pro")
+	ChatCompleteModelGemini2_5Pro   = ChatCompleteModel("models/gemini-2.5-pro")
 )
 
 type ChatCompleter struct {
