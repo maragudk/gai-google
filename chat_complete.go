@@ -7,8 +7,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"sort"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/genai"
 	"maragu.dev/gai"
 
@@ -27,6 +32,7 @@ type ChatCompleter struct {
 	Client *genai.Client
 	log    *slog.Logger
 	model  ChatCompleteModel
+	tracer trace.Tracer
 }
 
 type NewChatCompleterOptions struct {
@@ -38,10 +44,20 @@ func (c *Client) NewChatCompleter(opts NewChatCompleterOptions) *ChatCompleter {
 		Client: c.Client,
 		log:    c.log,
 		model:  opts.Model,
+		tracer: otel.Tracer("maragu.dev/gai-google"),
 	}
 }
 
 func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRequest) (gai.ChatCompleteResponse, error) {
+	ctx, span := c.tracer.Start(ctx, "google.chat_complete",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("ai.model", string(c.model)),
+			attribute.Int("ai.message_count", len(req.Messages)),
+		),
+	)
+	defer span.End()
+
 	if len(req.Messages) == 0 {
 		panic("no messages")
 	}
@@ -53,26 +69,45 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 	var config genai.GenerateContentConfig
 	if req.Temperature != nil {
 		config.Temperature = gai.Ptr(float32(*req.Temperature))
+		span.SetAttributes(attribute.Float64("ai.temperature", float64(*req.Temperature)))
 	}
 	if req.System != nil {
 		config.SystemInstruction = genai.NewContentFromText(*req.System, genai.RoleUser)
+		span.SetAttributes(attribute.Bool("ai.has_system_prompt", true))
+		span.SetAttributes(attribute.String("ai.system_prompt", *req.System))
 	}
 
 	if len(req.Tools) > 0 {
 		tools, err := schema.ConvertTools(req.Tools)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "tool conversion failed")
 			return gai.ChatCompleteResponse{}, fmt.Errorf("error converting tools: %w", err)
 		}
 		config.Tools = tools
+
+		// Extract and sort tool names for tracing
+		var toolNames []string
+		for _, tool := range req.Tools {
+			toolNames = append(toolNames, tool.Name)
+		}
+		sort.Strings(toolNames)
+		span.SetAttributes(
+			attribute.Int("ai.tool_count", len(req.Tools)),
+			attribute.StringSlice("ai.tools", toolNames),
+		)
 	}
 
 	if req.ResponseSchema != nil {
 		responseSchema, err := schema.ConvertResponseSchema(*req.ResponseSchema)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "response schema conversion failed")
 			return gai.ChatCompleteResponse{}, fmt.Errorf("error converting response schema: %w", err)
 		}
 		config.ResponseMIMEType = "application/json"
 		config.ResponseSchema = responseSchema
+		span.SetAttributes(attribute.Bool("ai.has_response_schema", true))
 	}
 
 	var history []*genai.Content
@@ -97,7 +132,9 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 				toolCall := part.ToolCall()
 				args := make(map[string]any)
 				if err := json.Unmarshal(toolCall.Args, &args); err != nil {
-					return gai.ChatCompleteResponse{}, fmt.Errorf("error unmarshaling tool call args: %w", err)
+					span.RecordError(err)
+					span.SetStatus(codes.Error, "request tool call args unmarshal failed")
+					return gai.ChatCompleteResponse{}, fmt.Errorf("error unmarshaling request tool call args: %w", err)
 				}
 				part := genai.NewPartFromFunctionCall(toolCall.Name, args)
 				part.FunctionCall.ID = toolCall.ID
@@ -116,7 +153,9 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 			case gai.MessagePartTypeData:
 				data, err := io.ReadAll(part.Data)
 				if err != nil {
-					return gai.ChatCompleteResponse{}, fmt.Errorf("error reading data: %w", err)
+					span.RecordError(err)
+					span.SetStatus(codes.Error, "data read failed")
+					return gai.ChatCompleteResponse{}, fmt.Errorf("error reading request data: %w", err)
 				}
 
 				part := &genai.Part{
@@ -141,6 +180,8 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 
 	chat, err := c.Client.Chats.Create(ctx, string(c.model), &config, history)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "chat session creation failed")
 		return gai.ChatCompleteResponse{}, err
 	}
 
@@ -149,6 +190,8 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 	res := gai.NewChatCompleteResponse(func(yield func(gai.MessagePart, error) bool) {
 		for chunk, err := range chat.SendStream(ctx, lastContent.Parts...) {
 			if err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "chat stream send failed")
 				yield(gai.MessagePart{}, err)
 				return
 			}
@@ -164,28 +207,38 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 					ThoughtsTokens:   int(chunk.UsageMetadata.ThoughtsTokenCount),
 					CompletionTokens: int(chunk.UsageMetadata.CandidatesTokenCount),
 				}
+				span.SetAttributes(
+					attribute.Int("ai.prompt_tokens", int(chunk.UsageMetadata.PromptTokenCount)),
+					attribute.Int("ai.thoughts_tokens", int(chunk.UsageMetadata.ThoughtsTokenCount)),
+					attribute.Int("ai.completion_tokens", int(chunk.UsageMetadata.CandidatesTokenCount)),
+				)
 			}
 
-			if len(chunk.Candidates) > 0 && chunk.Candidates[0].Content != nil {
-				for _, part := range chunk.Candidates[0].Content.Parts {
-					if part.Text != "" {
-						if !yield(gai.TextMessagePart(part.Text), nil) {
-							return
-						}
+			if len(chunk.Candidates) == 0 || chunk.Candidates[0].Content == nil {
+				continue
+			}
+
+			for _, part := range chunk.Candidates[0].Content.Parts {
+				if part.Text != "" {
+					if !yield(gai.TextMessagePart(part.Text), nil) {
+						return
 					}
-					if part.FunctionCall != nil {
-						args, err := json.Marshal(part.FunctionCall.Args)
-						if err != nil {
-							yield(gai.MessagePart{}, fmt.Errorf("error marshaling function args: %w", err))
-							return
-						}
-						id := part.FunctionCall.ID
-						if id == "" {
-							id = createRandomID()
-						}
-						if !yield(gai.ToolCallPart(id, part.FunctionCall.Name, args), nil) {
-							return
-						}
+				}
+
+				if part.FunctionCall != nil {
+					args, err := json.Marshal(part.FunctionCall.Args)
+					if err != nil {
+						span.RecordError(err)
+						span.SetStatus(codes.Error, "response tool call args marshal failed")
+						yield(gai.MessagePart{}, fmt.Errorf("error marshaling response tool call args: %w", err))
+						return
+					}
+					id := part.FunctionCall.ID
+					if id == "" {
+						id = createRandomID()
+					}
+					if !yield(gai.ToolCallPart(id, part.FunctionCall.Name, args), nil) {
+						return
 					}
 				}
 			}
