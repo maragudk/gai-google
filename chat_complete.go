@@ -56,7 +56,6 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 			attribute.Int("ai.message_count", len(req.Messages)),
 		),
 	)
-	defer span.End()
 
 	if len(req.Messages) == 0 {
 		panic("no messages")
@@ -188,6 +187,8 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 	meta := &gai.ChatCompleteResponseMetadata{}
 
 	res := gai.NewChatCompleteResponse(func(yield func(gai.MessagePart, error) bool) {
+		defer span.End()
+
 		for chunk, err := range chat.SendStream(ctx, lastContent.Parts...) {
 			if err != nil {
 				span.RecordError(err)
