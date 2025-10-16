@@ -416,6 +416,51 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 		is.True(t, res.Meta.Usage.CompletionTokens > 0, "should have completion tokens")
 		is.True(t, res.Meta.Usage.ThoughtsTokens > 0, "should have thoughts tokens")
 	})
+
+	t.Run("respects max completion tokens", func(t *testing.T) {
+		const maxCompletionTokens = 3
+
+		cc := newChatCompleter(t)
+
+		req := gai.ChatCompleteRequest{
+			Messages: []gai.Message{
+				gai.NewUserTextMessage("Write a poem of at least 20 words about gophers."),
+			},
+			Temperature:         gai.Ptr(gai.Temperature(0)),
+			MaxCompletionTokens: gai.Ptr(maxCompletionTokens),
+		}
+
+		res, err := cc.ChatComplete(t.Context(), req)
+		is.NotError(t, err)
+
+		var limitedOutput string
+		for part, err := range res.Parts() {
+			is.NotError(t, err)
+			if part.Type == gai.MessagePartTypeText {
+				limitedOutput += part.Text()
+			}
+		}
+
+		is.NotNil(t, res.Meta)
+		is.True(t, res.Meta.Usage.CompletionTokens <= maxCompletionTokens, "should respect max completion tokens")
+
+		req.MaxCompletionTokens = nil
+
+		res, err = cc.ChatComplete(t.Context(), req)
+		is.NotError(t, err)
+
+		var fullOutput string
+		for part, err := range res.Parts() {
+			is.NotError(t, err)
+			if part.Type == gai.MessagePartTypeText {
+				fullOutput += part.Text()
+			}
+		}
+
+		is.NotNil(t, res.Meta)
+		is.True(t, res.Meta.Usage.CompletionTokens > maxCompletionTokens, "should exceed limit when not constrained")
+		is.True(t, len(fullOutput) > len(limitedOutput), "should produce more output without limit")
+	})
 }
 
 func newChatCompleter(t *testing.T) *google.ChatCompleter {

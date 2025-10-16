@@ -75,6 +75,10 @@ func (c *ChatCompleter) ChatComplete(ctx context.Context, req gai.ChatCompleteRe
 		span.SetAttributes(attribute.Bool("ai.has_system_prompt", true))
 		span.SetAttributes(attribute.String("ai.system_prompt", *req.System))
 	}
+	if req.MaxCompletionTokens != nil {
+		config.MaxOutputTokens = int32(*req.MaxCompletionTokens)
+		span.SetAttributes(attribute.Int("ai.max_completion_tokens", *req.MaxCompletionTokens))
+	}
 
 	if len(req.Tools) > 0 {
 		tools, err := schema.ConvertTools(req.Tools)
