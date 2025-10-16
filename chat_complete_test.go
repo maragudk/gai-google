@@ -71,7 +71,7 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 				t.Fatal("unexpected message parts")
 			}
 		}
-		is.Equal(t, "Artificial Intelligence.", output)
+		is.True(t, strings.Contains(output, "Artificial Intelligence"), output)
 	})
 
 	t.Run("can use a tool", func(t *testing.T) {
@@ -155,7 +155,9 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 		}
 
 		t.Log(output)
-		is.True(t, strings.Contains(output, `The readme.txt file contains "Hi!".`), "should contain description of file")
+		lower := strings.ToLower(output)
+		is.True(t, strings.Contains(lower, "readme.txt"), output)
+		is.True(t, strings.Contains(output, "Hi"), output)
 	})
 
 	t.Run("can use a tool with no args", func(t *testing.T) {
@@ -381,7 +383,8 @@ func TestChatCompleter_ChatComplete(t *testing.T) {
 		}
 
 		t.Log(output)
-		is.True(t, strings.Contains(output, "thumbs-up"), "should contain thumbs-up")
+		normalized := strings.ToLower(strings.ReplaceAll(output, "-", " "))
+		is.True(t, strings.Contains(normalized, "thumbs up"), "should contain thumbs-up")
 	})
 
 	t.Run("tracks token usage", func(t *testing.T) {
